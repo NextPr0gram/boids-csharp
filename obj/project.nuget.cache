@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "dgSpecHash": "XkQZW4qDcO4=",
+  "success": true,
+  "projectFilePath": "/home/nextprogram/Git/boid/boid.csproj",
+  "expectedPackageFiles": [
+    "/home/nextprogram/.nuget/packages/csfml/3.0.0/csfml.3.0.0.nupkg.sha512",
+    "/home/nextprogram/.nuget/packages/sfml.audio/3.0.0/sfml.audio.3.0.0.nupkg.sha512",
+    "/home/nextprogram/.nuget/packages/sfml.graphics/3.0.0/sfml.graphics.3.0.0.nupkg.sha512",
+    "/home/nextprogram/.nuget/packages/sfml.net/3.0.0/sfml.net.3.0.0.nupkg.sha512",
+    "/home/nextprogram/.nuget/packages/sfml.system/3.0.0/sfml.system.3.0.0.nupkg.sha512",
+    "/home/nextprogram/.nuget/packages/sfml.window/3.0.0/sfml.window.3.0.0.nupkg.sha512",
+    "/home/nextprogram/.nuget/packages/microsoft.aspnetcore.app.ref/10.0.4/microsoft.aspnetcore.app.ref.10.0.4.nupkg.sha512"
+  ],
+  "logs": []
+}
