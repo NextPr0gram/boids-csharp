@@ -2,20 +2,20 @@
 using SFML.System;
 using SFML.Window;
 
-const int ScreenWidth = 800;
-const int ScreenHeight = 600;
+const int ScreenWidth = 1600;
+const int ScreenHeight = 900;
+const int MaxVelocity = 2;
 
-// Window
+// Window and view
 RenderWindow window = new RenderWindow(
     new VideoMode(new Vector2u(ScreenWidth, ScreenHeight)),
     "SFML.NET"
 );
-
 window.Closed += (Sender, e) => window.Close();
 View view = new(new FloatRect(new Vector2f(0, 0), new Vector2f(ScreenWidth, ScreenHeight)));
 window.SetView(view);
 window.SetFramerateLimit(60);
-RectangleShape background = new RectangleShape(new Vector2f(ScreenWidth, ScreenHeight))
+RectangleShape viewBackground = new RectangleShape(new Vector2f(ScreenWidth, ScreenHeight))
 {
     FillColor = Color.White,
     Position = new Vector2f(0, 0)
@@ -25,7 +25,17 @@ RectangleShape background = new RectangleShape(new Vector2f(ScreenWidth, ScreenH
 window.Resized += (_, e) => { window.SetView(GetLetterboxView(view, e.Size.X, e.Size.Y)); };
 
 // Objects
-Bird bird = new(new Vector2f(400, 400));
+
+List<Boid> BoidList = new();
+Random random = new Random();
+
+for (int i = 0; i < 100; i++)
+{
+    BoidList.Add(new Boid(
+        new Vector2f(random.Next(0, ScreenWidth), random.Next(0, ScreenHeight)),
+        new Vector2f(random.Next(-MaxVelocity, MaxVelocity), random.Next(-MaxVelocity, MaxVelocity))
+    ));
+}
 
 // Main loop
 while (window.IsOpen)
@@ -34,9 +44,15 @@ while (window.IsOpen)
     window.DispatchEvents();
     window.Clear(Color.Black);
 
+    // Update
+
     // Draw
-    window.Draw(background);
-    bird.UpdateAndDraw(window);
+    window.Draw(viewBackground);
+    foreach (Boid bird in BoidList)
+    {
+        bird.Update(BoidList);
+        bird.Draw(window);
+    }
 
     window.Display();
 }
