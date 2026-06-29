@@ -121,3 +121,4 @@
 /home/nextprogram/Git/boid/obj/Debug/net10.0/boid.pdb
 /home/nextprogram/Git/boid/obj/Debug/net10.0/boid.genruntimeconfig.cache
 /home/nextprogram/Git/boid/obj/Debug/net10.0/ref/boid.dll
+/home/nextprogram/Git/boid/obj/Debug/net10.0/boid.sourcelink.json
