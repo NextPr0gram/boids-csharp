@@ -16,3 +16,8 @@ Each boid steers away from others when they get too close.
 
 ### 3. Alignment
 Each boid tries to match the speed and direction of nearby boids.
+
+## Demo
+
+https://github.com/user-attachments/assets/d8519181-6fe9-4d64-80b5-a07f7b4c1ded
+
