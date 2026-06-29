@@ -1,90 +1,266 @@
+using System;
+using System.Collections.Generic;
 using SFML.Graphics;
 using SFML.System;
 
 public class Boid
 {
-    private ConvexShape BodyShape;
-    private Vector2f Velocity;
-    private Vector2f Acceleration;
-    private float DistanceFromOther;
+    private readonly ConvexShape bodyShape;
+    private Vector2f velocity;
+    private Vector2f acceleration;
+    private readonly float maxForce;
+    private readonly float maxSpeed;
+    private readonly float radius;
 
     public Boid(Vector2f position, Vector2f velocity)
     {
-        BodyShape = new ConvexShape(3);
-        BodyShape.SetPoint(0, new Vector2f(10, 0));
-        BodyShape.SetPoint(1, new Vector2f(0, 30));
-        BodyShape.SetPoint(2, new Vector2f(20, 30));
-        BodyShape.FillColor = Color.Red;
-        BodyShape.Origin = BodyShape.GetGeometricCenter();
-        BodyShape.Position = position;
-        Velocity = velocity;
+        bodyShape = new ConvexShape(3);
+        bodyShape.SetPoint(0, new Vector2f(0f, -8f));
+        bodyShape.SetPoint(1, new Vector2f(-5f, 8f));
+        bodyShape.SetPoint(2, new Vector2f(5f, 8f));
+        bodyShape.FillColor = Color.Red;
+        bodyShape.OutlineColor = Color.White;
+        bodyShape.OutlineThickness = 1f;
+        bodyShape.Origin = new Vector2f(0f, 0f);
+        bodyShape.Position = position;
+
+        this.velocity = velocity;
+        acceleration = new Vector2f(0f, 0f);
+
+        radius = 2f;
+        maxSpeed = 2f;
+        maxForce = 0.03f;
     }
 
-    public void Update(List<Boid> allBoids)
+    public void Update(List<Boid> allBoids, Vector2u windowSize)
     {
-        Vector2f averageBoidPos = GetAverageBoidsPos(allBoids);
-        Vector2f difference = averageBoidPos - GetPosition();
-        Acceleration = difference; // Changing this value (100) changes the speed at which each boid travels to the average position of all boids
-        Velocity += Acceleration;
-        LimitVelocity();
-        Acceleration = new Vector2f(0, 0);
+        Flock(allBoids);
 
+        velocity += acceleration;
+        velocity = Limit(velocity, maxSpeed);
 
-        BodyShape.Position += Velocity;
-        BodyShape.Rotation = GetAngleFromVelocity();
-    }
+        bodyShape.Position += velocity;
+        acceleration = new Vector2f(0f, 0f);
 
-    private Vector2f GetAverageBoidsPos(List<Boid> allBoids)
-    {
-        float sumPosX = 0;
-        float sumPosY = 0;
-        foreach (Boid boid in allBoids)
-        {
-            if (boid == this)
-            {
-                continue;
-            }
-            Vector2f boidPos = boid.GetPosition();
-            sumPosX += boidPos.X;
-            sumPosY += boidPos.Y;
+        Borders(windowSize);
 
-        }
-        float nOfBoids = allBoids.Count - 1;
-        return new Vector2f(sumPosX / nOfBoids, sumPosY / nOfBoids);
+        bodyShape.Rotation = GetAngleFromVelocity();
     }
 
     public void Draw(RenderWindow window)
     {
-        window.Draw(BodyShape);
+        window.Draw(bodyShape);
     }
 
-    private void Accelerate(Vector2f force)
+    public Vector2f GetPosition()
     {
-        Acceleration += force;
+        return bodyShape.Position;
+    }
+
+    private void ApplyForce(Vector2f force)
+    {
+        acceleration += force;
+    }
+
+    private void Flock(List<Boid> allBoids)
+    {
+        Vector2f sep = Separate(allBoids);
+        Vector2f ali = Align(allBoids);
+        Vector2f coh = Cohesion(allBoids);
+
+        sep *= 1.5f;
+        ali *= 1.0f;
+        coh *= 1.0f;
+
+        ApplyForce(sep);
+        ApplyForce(ali);
+        ApplyForce(coh);
+    }
+
+    private Vector2f Seek(Vector2f target)
+    {
+        Vector2f desired = target - bodyShape.Position;
+        desired = Normalize(desired);
+        desired *= maxSpeed;
+
+        Vector2f steer = desired - velocity;
+        steer = Limit(steer, maxForce);
+        return steer;
+    }
+
+    private Vector2f Separate(List<Boid> allBoids)
+    {
+        float desiredSeparation = 25f;
+        Vector2f steer = new Vector2f(0f, 0f);
+        int count = 0;
+
+        foreach (Boid other in allBoids)
+        {
+            if (other == this)
+            {
+                continue;
+            }
+
+            float d = Distance(bodyShape.Position, other.GetPosition());
+
+            if (d > 0f && d < desiredSeparation)
+            {
+                Vector2f diff = bodyShape.Position - other.GetPosition();
+                diff = Normalize(diff);
+                diff /= d;
+                steer += diff;
+                count++;
+            }
+        }
+
+        if (count > 0)
+        {
+            steer /= count;
+        }
+
+        if (Magnitude(steer) > 0f)
+        {
+            steer = Normalize(steer);
+            steer *= maxSpeed;
+            steer -= velocity;
+            steer = Limit(steer, maxForce);
+        }
+
+        return steer;
+    }
+
+    private Vector2f Align(List<Boid> allBoids)
+    {
+        float neighborDist = 50f;
+        Vector2f sum = new Vector2f(0f, 0f);
+        int count = 0;
+
+        foreach (Boid other in allBoids)
+        {
+            if (other == this)
+            {
+                continue;
+            }
+
+            float d = Distance(bodyShape.Position, other.GetPosition());
+
+            if (d > 0f && d < neighborDist)
+            {
+                sum += other.velocity;
+                count++;
+            }
+        }
+
+        if (count > 0)
+        {
+            sum /= count;
+            sum = Normalize(sum);
+            sum *= maxSpeed;
+
+            Vector2f steer = sum - velocity;
+            steer = Limit(steer, maxForce);
+            return steer;
+        }
+
+        return new Vector2f(0f, 0f);
+    }
+
+    private Vector2f Cohesion(List<Boid> allBoids)
+    {
+        float neighborDist = 50f;
+        Vector2f sum = new Vector2f(0f, 0f);
+        int count = 0;
+
+        foreach (Boid other in allBoids)
+        {
+            if (other == this)
+            {
+                continue;
+            }
+
+            float d = Distance(bodyShape.Position, other.GetPosition());
+
+            if (d > 0f && d < neighborDist)
+            {
+                sum += other.GetPosition();
+                count++;
+            }
+        }
+
+        if (count > 0)
+        {
+            sum /= count;
+            return Seek(sum);
+        }
+
+        return new Vector2f(0f, 0f);
+    }
+
+    private void Borders(Vector2u windowSize)
+    {
+        Vector2f pos = bodyShape.Position;
+
+        if (pos.X < -radius)
+        {
+            pos.X = windowSize.X + radius;
+        }
+
+        if (pos.Y < -radius)
+        {
+            pos.Y = windowSize.Y + radius;
+        }
+
+        if (pos.X > windowSize.X + radius)
+        {
+            pos.X = -radius;
+        }
+
+        if (pos.Y > windowSize.Y + radius)
+        {
+            pos.Y = -radius;
+        }
+
+        bodyShape.Position = pos;
     }
 
     private float GetAngleFromVelocity()
     {
-        float angleInRadians = MathF.Atan2(Velocity.X, -Velocity.Y);
-        float angleInDegrees = angleInRadians * 180f / MathF.PI;
-        return angleInDegrees;
+        float angleRadians = MathF.Atan2(velocity.Y, velocity.X);
+        return angleRadians * 180f / MathF.PI + 90f;
     }
 
-    private float MaxSpeed = 10f;
-
-    private void LimitVelocity()
+    private static float Magnitude(Vector2f vector)
     {
-        float speed = MathF.Sqrt(Velocity.X * Velocity.X + Velocity.Y * Velocity.Y);
-        if (speed > MaxSpeed)
+        return MathF.Sqrt(vector.X * vector.X + vector.Y * vector.Y);
+    }
+
+    private static Vector2f Normalize(Vector2f vector)
+    {
+        float mag = Magnitude(vector);
+
+        if (mag == 0f)
         {
-            Velocity = new Vector2f(
-                Velocity.X / speed * MaxSpeed,
-                Velocity.Y / speed * MaxSpeed
-            );
+            return new Vector2f(0f, 0f);
         }
+
+        return vector / mag;
     }
-    public Vector2f GetPosition()
+
+    private static Vector2f Limit(Vector2f vector, float limit)
     {
-        return BodyShape.Position;
+        float mag = Magnitude(vector);
+
+        if (mag > limit && mag > 0f)
+        {
+            vector = Normalize(vector);
+            vector *= limit;
+        }
+
+        return vector;
+    }
+
+    private static float Distance(Vector2f a, Vector2f b)
+    {
+        return Magnitude(a - b);
     }
 }

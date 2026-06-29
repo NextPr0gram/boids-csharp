@@ -50,7 +50,7 @@ while (window.IsOpen)
     window.Draw(viewBackground);
     foreach (Boid bird in BoidList)
     {
-        bird.Update(BoidList);
+        bird.Update(BoidList, new Vector2u(ScreenWidth, ScreenHeight));
         bird.Draw(window);
     }
 
